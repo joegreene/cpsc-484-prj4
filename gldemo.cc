@@ -43,10 +43,17 @@
 #include <string>
 #include <vector>
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#include <GLUT/glut.h>
+#else
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
+#endif
 
+// custom header
 #include "gmath.hh"
 
 // Whether or not to print messages to stderr when keys are pressed.
@@ -224,7 +231,7 @@ public:
     // Create the mesh geometry.
 
     double pos = side_length / 2.0, // offset of corners relative to the origin
-      neg = -pos;
+           neg = -pos;
 
     // Enumerate the 8 combinations in the same order as counting in
     // binary.
@@ -274,9 +281,12 @@ public:
   Vector4 location(int time) const {
     
     double t = static_cast<double>(time) / _period,
-      y = _amplitude * sin(t);
+           y = _amplitude * sin(t);
     
     auto result = _origin;
+    
+    //result[0] = _amplitude * cos(t);// own edit (for fun)
+
     result[1] = y;
 
     return result;
@@ -394,7 +404,7 @@ public:
 
     // TODO: Call glCLear() to clear the color buffers and depth
     // buffer.
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // own edit
 
     // TODO: Call the following functions to set up a model-view
     // transformation matrix corresponding to the camera positioned at
@@ -404,6 +414,15 @@ public:
     // glMatrixMode
     // glLoadIdentity
     // gluLookAt
+
+    // own edits
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(_viewer.location()[0], // eye x,y,z 
+              _viewer.location()[1], 
+              _viewer.location()[2],
+              0, 0, 0,               // center x, y, z
+              0, 1, 0);              // up x,y,z
 
     auto location = _cube.location(_time);
     // TODO: Call glTranslated() so that the cube is moved to its
@@ -422,10 +441,14 @@ public:
       
       // TODO: Call glColor3d to set the GL color to match
       // face.color().
+      glColor3d(face.color()[0], face.color()[1], face.color()[2]); // own edit
 
       // TODO: Call glVertex3d() three times to register the three
       // vertices of this face. The vertices can be obtained wtih
       // face.v0(), face.v1(), and face.v2().
+      glVertex3d(face.v0()[0], face.v0()[1], face.v0()[2]); // own edit, v = point of face (triangles)
+      glVertex3d(face.v1()[0], face.v1()[1], face.v1()[2]); // own edit
+      glVertex3d(face.v2()[0], face.v2()[1], face.v2()[2]); // own edit
     }
     // TODO: Call glEnd() to stop drawing the triangles.
     glEnd();
@@ -514,6 +537,10 @@ int main(int argc, char** argv) {
   // glutInitWindowSize
   // glutCreateWindow
 
+  glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // int mode as input
+  glutInitWindowSize(WINDOW_WIDTH,WINDOW_HEIGHT);           // width by height (are there constants for this?)
+  glutCreateWindow(WINDOW_NAME.c_str());                    // program name (expects a char*)
+
   // Set up GLUT callbacks.
   atexit(exit_handler);
   glutKeyboardFunc(ordinary_key_handler);
@@ -532,7 +559,43 @@ int main(int argc, char** argv) {
   // glDepthFunc
   // glMatrixMode
   // glLoadIdentity
-  // glPerspective
+  // glPerspective (is this supposed to be gluPerspective?)
+
+  glClearColor(0,0,0,0);       // black color
+  glShadeModel(GL_FLAT);       // flat shading
+  glEnable(GL_DEPTH_TEST);     // unsure; enable depth buffering?
+  glDepthFunc(GL_LEQUAL);      // unsure; set type of depth buffering?
+  glMatrixMode(GL_PROJECTION); // perspective projection (I believe)
+  glLoadIdentity();            // load the identity matrix
+
+  // FOVY calculation (possibly unnecessary):
+  // - https://www.opengl.org/discussion_boards/showthread.php/146588-fovy-calculation
+
+  /*
+    double halfwidth = tan(horizontal_angle/2);
+    double halfheight = tan(vertical_angle/2);
+    if (halfwidth/halfheight > ASPECT_RATIO) {
+      // use horizontal angle to set fovy
+      double fovy = 2*atan(halfwidth/aspect_ratio);
+    } else {
+      // use vertical angle to set fovy
+      fovy = vertical_angle;
+    }
+    fovy = fovy*180/PI;
+  */
+
+  // znear and zfar (how do?)
+  // - http://stackoverflow.com/questions/8651678/how-to-set-gluperspectives-znear-and-zfar-values-for-a-given-radius-of-a-boun
+  // - http://stackoverflow.com/questions/16571981/gluperspective-parameters-what-do-they-mean
+  // - https://www.opengl.org/discussion_boards/showthread.php/137804-glPerspective
+  // znear = center.z - radius
+  // zfar = center.z + radius
+  // look at global_scene attributes
+
+  // fovy, aspect, znear, zfar
+  gluPerspective(FIELD_OF_VIEW_DEGREES, ASPECT_RATIO, 
+                  1,    // test value 
+                  1024); // test value
 
   // Start the GLUT loop, which will run indefinitely until the
   // program exits.
