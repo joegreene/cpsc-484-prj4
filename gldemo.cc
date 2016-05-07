@@ -39,7 +39,9 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -63,14 +65,26 @@
 // Frame rate (Stupid way of limiting frame rate, but it works for us.)
 #define FRAME_RATE 60.0
 
+// Multiple cubes
+#define NUM_CUBES 50
+#define SIDE_LEN_MAX 4
+#define SIDE_LEN_MIN 1
+#define COORD_MAX 50
+#define AMP_MAX 20
+#define PERIOD_MIN 5
+#define PERIOD_MAX 60
+
+// Viewer
+#define VIEWER_Y 10.0
+
 // Whether or not to print messages to stderr when keys are pressed.
 const bool DO_LOGGING = true;
 
 // The viewer "orbits" the origin at discrete VIEWER_POSITIONS angles,
 // e.g. 1 o'clock, 2 o'clock, etc. The viewer can also move closer or
 // farther from the origin in discrete steps.
-const int VIEWER_POSITIONS = 12,
-  VIEWER_STEPS_FROM_ORIGIN = 6;
+const int VIEWER_POSITIONS = 96,
+  VIEWER_STEPS_FROM_ORIGIN = 24;
 
 const double WINDOW_WIDTH = 640,
   WINDOW_HEIGHT = 480,
@@ -232,7 +246,7 @@ public:
 
     assert(side_length > 0.0);
     assert(origin.is_homogeneous_point());
-    assert(amplitude > 0.0);
+    assert(amplitude >= 0.0);
     assert(period > 0.0);
 
     // Create the mesh geometry.
@@ -289,6 +303,7 @@ public:
     
     double t = static_cast<double>(time) / _period,
            y = _amplitude * sin(t);
+    if (y < 0) y *= -1;
     
     auto result = _origin;
     
@@ -359,7 +374,7 @@ public:
     double fraction_of_circle = static_cast<double>(_position) / static_cast<double>(VIEWER_POSITIONS),
       radians = fraction_of_circle * 2.0 * M_PI;
     return make_point(_distance * cos(radians),
-                      0.0,
+                      VIEWER_Y,
                       _distance * sin(radians));
   }
 };  
@@ -368,18 +383,28 @@ public:
 // value used to control the floating oscillation.
 class Scene {
 private:
-  FloatingCube _cube;
+  std::vector<FloatingCube> _cubes;
   Viewer _viewer;
   int _time;
 
 public:
   Scene()
-    : _cube(1.0,
-            make_point(0.0, 0.0, 0.0),
-            2.0,
-            60.0),
-      _viewer(VIEWER_STEP * VIEWER_STEPS_FROM_ORIGIN, 2),
-      _time(0) { }
+    : _viewer(VIEWER_STEP * VIEWER_STEPS_FROM_ORIGIN, 2),
+      _time(0) {
+    Vector4 origin;
+    double side_len, x_coord, z_coord, amp, period;
+    for(int i = 0; i < NUM_CUBES; i++) {
+      side_len = rand() % (SIDE_LEN_MAX - SIDE_LEN_MIN) + SIDE_LEN_MIN;
+      x_coord = rand() % COORD_MAX - COORD_MAX / 2.0;
+      z_coord = rand() % COORD_MAX - COORD_MAX / 2.0;
+      amp = rand() % AMP_MAX;
+      period = rand() % (PERIOD_MAX - PERIOD_MIN) + PERIOD_MIN;
+      origin = make_point(x_coord,
+                          0.0,
+                          z_coord);
+      _cubes.push_back(FloatingCube(side_len, origin, amp, period));
+    }
+  }
 
   void left() {
     _viewer.move_counterclockwise();
@@ -428,34 +453,37 @@ public:
               0, 0, 0,               // center x, y, z
               0, 1, 0);              // up x,y,z
 
-    auto location = _cube.location(_time);
-    // Call glTranslated() so that the cube is moved to its
-    // proper location. More specifically, the cube's coordinates,
-    // which are currently in a cube-local object space, need to be
-    // translated by the _cube.location(_time) vector, so that they
-    // are in world space coordinates. Without this step, the cube
-    // will stay stuck at the origin instead of bouncing.
-    glTranslated(location[0], location[1], location[2]);
+    for (int j = 0; j < NUM_CUBES; ++j) {
+      auto location = _cubes[j].location(_time);
+      // Call glTranslated() so that the cube is moved to its
+      // proper location. More specifically, the cube's coordinates,
+      // which are currently in a cube-local object space, need to be
+      // translated by the _cube.location(_time) vector, so that they
+      // are in world space coordinates. Without this step, the cube
+      // will stay stuck at the origin instead of bouncing.
+      glTranslated(location[0], location[1], location[2]);
 
-    // Call glBegin() to start drawing triangles.
-    auto mesh = _cube.mesh();
-    glBegin(GL_TRIANGLES);
-    for (int i = 0; i < mesh.face_count(); ++i) {
-      auto face = mesh.face(i);
-      
-      // Call glColor3d to set the GL color to match
-      // face.color().
-      glColor3d(face.color()[0], face.color()[1], face.color()[2]);
+      // Call glBegin() to start drawing triangles.
+      auto mesh = _cubes[j].mesh();
+      glBegin(GL_TRIANGLES);
+      for (int i = 0; i < mesh.face_count(); ++i) {
+        auto face = mesh.face(i);
+        
+        // Call glColor3d to set the GL color to match
+        // face.color().
+        glColor3d(face.color()[0], face.color()[1], face.color()[2]);
 
-      // Call glVertex3d() three times to register the three
-      // vertices of this face. The vertices can be obtained wtih
-      // face.v0(), face.v1(), and face.v2().
-      glVertex3d(face.v0()[0], face.v0()[1], face.v0()[2]);
-      glVertex3d(face.v1()[0], face.v1()[1], face.v1()[2]);
-      glVertex3d(face.v2()[0], face.v2()[1], face.v2()[2]);
+        // Call glVertex3d() three times to register the three
+        // vertices of this face. The vertices can be obtained wtih
+        // face.v0(), face.v1(), and face.v2().
+        glVertex3d(face.v0()[0], face.v0()[1], face.v0()[2]);
+        glVertex3d(face.v1()[0], face.v1()[1], face.v1()[2]);
+        glVertex3d(face.v2()[0], face.v2()[1], face.v2()[2]);
+      }
+      // Call glEnd() to stop drawing the triangles.
+      glEnd();
+      glTranslated(-location[0], -location[1], -location[2]);
     }
-    // Call glEnd() to stop drawing the triangles.
-    glEnd();
 
     // Swap the back buffer and display buffer.
     glutSwapBuffers();
@@ -530,6 +558,8 @@ void display_handler() {
 }
 
 int main(int argc, char** argv) {
+  // Set the seed
+  srand(time(NULL));
 
   // Allocate the Scene object.
   global_scene.reset(new Scene());
@@ -586,3 +616,5 @@ int main(int argc, char** argv) {
   
   return 0;
 }
+
+// vi: et ts=2 sw=2
