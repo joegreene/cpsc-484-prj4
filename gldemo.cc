@@ -45,7 +45,7 @@
 #include <string>
 #include <vector>
 
-#ifdef __APPLE__
+#ifdef __APPLE__ // for compiling on Mac OS X
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
@@ -60,7 +60,7 @@
 // custom header
 #include "gmath.hh"
 
-// Frame rate
+// Frame rate (Stupid way of limiting frame rate, but it works for us.)
 #define FRAME_RATE 60.0
 
 // Whether or not to print messages to stderr when keys are pressed.
@@ -516,6 +516,7 @@ void special_key_handler(int key, int x, int y) {
 void idle_handler() {
   global_scene->idle();
   // Stupid way of limiting frame rate, but it works for us.
+  // NOTE: usleep is a unix-specific function
   usleep(1000000.0 / FRAME_RATE);
 }
 
@@ -544,7 +545,7 @@ int main(int argc, char** argv) {
   // glutCreateWindow
 
   glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); // int mode as input
-  glutInitWindowSize(WINDOW_WIDTH,WINDOW_HEIGHT);           // width by height (are there constants for this?)
+  glutInitWindowSize(WINDOW_WIDTH,WINDOW_HEIGHT);           // width by height
   glutCreateWindow(WINDOW_NAME.c_str());                    // program name (expects a char*)
 
   // Set up GLUT callbacks.
@@ -567,17 +568,17 @@ int main(int argc, char** argv) {
   // glLoadIdentity
   // glPerspective (is this supposed to be gluPerspective?)
 
-  glClearColor(0,0,0,0);       // black color
+  glClearColor(0,0,0,1);       // black color
   glShadeModel(GL_FLAT);       // flat shading
-  glEnable(GL_DEPTH_TEST);     // unsure; enable depth buffering?
-  glDepthFunc(GL_LEQUAL);      // unsure; set type of depth buffering?
+  glEnable(GL_DEPTH_TEST);     // enable depth buffering
+  glDepthFunc(GL_LEQUAL);      // buffer when less or equal
   glMatrixMode(GL_PROJECTION); // perspective projection (I believe)
   glLoadIdentity();            // load the identity matrix
 
   // fovy, aspect, znear, zfar
   gluPerspective(FIELD_OF_VIEW_DEGREES, ASPECT_RATIO, 
-                  0.1,    // test value 
-                  100); // test value
+                  0.01,   // misc small value 
+                  1024);  // misc large value
 
   // Start the GLUT loop, which will run indefinitely until the
   // program exits.
