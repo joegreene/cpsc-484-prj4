@@ -1,4 +1,3 @@
-
 //
 // gldemo.cc
 //
@@ -7,7 +6,10 @@
 // CPSC 484, CSU Fullerton, Spring 2016, Prof. Kevin Wortman
 // Project 3
 //
-// Name: TODO write your group members' name(s) here
+// Name:
+// 	* Joe Greene
+// 	* Kyle Terrien
+// 	* Adam Beck
 //
 // In case it ever matters, this file is hereby placed under the MIT
 // License:
@@ -53,8 +55,13 @@
 #include <GL/glut.h>
 #endif
 
+#include <unistd.h>
+
 // custom header
 #include "gmath.hh"
+
+// Frame rate
+#define FRAME_RATE 60.0
 
 // Whether or not to print messages to stderr when keys are pressed.
 const bool DO_LOGGING = true;
@@ -285,8 +292,6 @@ public:
     
     auto result = _origin;
     
-    //result[0] = _amplitude * cos(t);// own edit (for fun)
-
     result[1] = y;
 
     return result;
@@ -402,11 +407,11 @@ public:
   void display() {
     // Render the cube.
 
-    // TODO: Call glCLear() to clear the color buffers and depth
+    // Call glCLear() to clear the color buffers and depth
     // buffer.
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // own edit
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // TODO: Call the following functions to set up a model-view
+    // Call the following functions to set up a model-view
     // transformation matrix corresponding to the camera positioned at
     // _viewer.location() and pointing toward the (0, 0, 0) world
     // coordinate origin, with the standard up-vector (0, 1, 0).
@@ -415,7 +420,6 @@ public:
     // glLoadIdentity
     // gluLookAt
 
-    // own edits
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     gluLookAt(_viewer.location()[0], // eye x,y,z 
@@ -425,7 +429,7 @@ public:
               0, 1, 0);              // up x,y,z
 
     auto location = _cube.location(_time);
-    // TODO: Call glTranslated() so that the cube is moved to its
+    // Call glTranslated() so that the cube is moved to its
     // proper location. More specifically, the cube's coordinates,
     // which are currently in a cube-local object space, need to be
     // translated by the _cube.location(_time) vector, so that they
@@ -433,24 +437,24 @@ public:
     // will stay stuck at the origin instead of bouncing.
     glTranslated(location[0], location[1], location[2]);
 
-    // TODO: Call glBegin() to start drawing triangles.
+    // Call glBegin() to start drawing triangles.
     auto mesh = _cube.mesh();
     glBegin(GL_TRIANGLES);
     for (int i = 0; i < mesh.face_count(); ++i) {
       auto face = mesh.face(i);
       
-      // TODO: Call glColor3d to set the GL color to match
+      // Call glColor3d to set the GL color to match
       // face.color().
-      glColor3d(face.color()[0], face.color()[1], face.color()[2]); // own edit
+      glColor3d(face.color()[0], face.color()[1], face.color()[2]);
 
-      // TODO: Call glVertex3d() three times to register the three
+      // Call glVertex3d() three times to register the three
       // vertices of this face. The vertices can be obtained wtih
       // face.v0(), face.v1(), and face.v2().
-      glVertex3d(face.v0()[0], face.v0()[1], face.v0()[2]); // own edit, v = point of face (triangles)
-      glVertex3d(face.v1()[0], face.v1()[1], face.v1()[2]); // own edit
-      glVertex3d(face.v2()[0], face.v2()[1], face.v2()[2]); // own edit
+      glVertex3d(face.v0()[0], face.v0()[1], face.v0()[2]);
+      glVertex3d(face.v1()[0], face.v1()[1], face.v1()[2]);
+      glVertex3d(face.v2()[0], face.v2()[1], face.v2()[2]);
     }
-    // TODO: Call glEnd() to stop drawing the triangles.
+    // Call glEnd() to stop drawing the triangles.
     glEnd();
 
     // Swap the back buffer and display buffer.
@@ -511,6 +515,8 @@ void special_key_handler(int key, int x, int y) {
 // and render one frame.
 void idle_handler() {
   global_scene->idle();
+  // Stupid way of limiting frame rate, but it works for us.
+  usleep(1000000.0 / FRAME_RATE);
 }
 
 // Callback, called whenever the window needs to be
@@ -530,7 +536,7 @@ int main(int argc, char** argv) {
   // Initialize OpenGL and GLUT.
   glutInit(&argc, argv);
   
-  // TODO: Call the following functions to set up an OpenGL window
+  // Call the following functions to set up an OpenGL window
   // with RGB colors, double buffering, and depth buffering.
   //
   // glutInitDisplayMode
@@ -548,7 +554,7 @@ int main(int argc, char** argv) {
   glutIdleFunc(idle_handler);
   glutDisplayFunc(display_handler);
 
-  // TODO: Call the following functions to set the clear color to
+  // Call the following functions to set the clear color to
   // black; use flat shading; enable depth buffering; and set up
   // perspective projection based on FIELD_OF_VIEW_DEGREES and
   // ASPECT_RATIO.
@@ -568,34 +574,10 @@ int main(int argc, char** argv) {
   glMatrixMode(GL_PROJECTION); // perspective projection (I believe)
   glLoadIdentity();            // load the identity matrix
 
-  // FOVY calculation (possibly unnecessary):
-  // - https://www.opengl.org/discussion_boards/showthread.php/146588-fovy-calculation
-
-  /*
-    double halfwidth = tan(horizontal_angle/2);
-    double halfheight = tan(vertical_angle/2);
-    if (halfwidth/halfheight > ASPECT_RATIO) {
-      // use horizontal angle to set fovy
-      double fovy = 2*atan(halfwidth/aspect_ratio);
-    } else {
-      // use vertical angle to set fovy
-      fovy = vertical_angle;
-    }
-    fovy = fovy*180/PI;
-  */
-
-  // znear and zfar (how do?)
-  // - http://stackoverflow.com/questions/8651678/how-to-set-gluperspectives-znear-and-zfar-values-for-a-given-radius-of-a-boun
-  // - http://stackoverflow.com/questions/16571981/gluperspective-parameters-what-do-they-mean
-  // - https://www.opengl.org/discussion_boards/showthread.php/137804-glPerspective
-  // znear = center.z - radius
-  // zfar = center.z + radius
-  // look at global_scene attributes
-
   // fovy, aspect, znear, zfar
   gluPerspective(FIELD_OF_VIEW_DEGREES, ASPECT_RATIO, 
-                  1,    // test value 
-                  1024); // test value
+                  0.1,    // test value 
+                  100); // test value
 
   // Start the GLUT loop, which will run indefinitely until the
   // program exits.
